@@ -66,7 +66,7 @@ pub struct CvRect {
 }
 
 #[repr(C)]
-pub type CvScalar = [c_double, ..4];
+pub type CvScalar = [c_double;4];
 
 #[repr(C)]
 pub struct CvSeq {

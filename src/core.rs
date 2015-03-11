@@ -1,7 +1,7 @@
 use ffi::core::*;
 use ffi::types::{CvSeq, CvRect};
 
-#[deriving(Clone, PartialEq, Show)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Color {
   red: u8,
   green: u8,
@@ -23,7 +23,7 @@ impl Color {
   }
 }
 
-#[deriving(Clone, PartialEq, Show)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Point {
   pub x: int,
   pub y: int,
@@ -35,7 +35,7 @@ impl Point {
   }
 }
 
-#[deriving(Clone, PartialEq, Show)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Rect {
   pub x: int,
   pub y: int,
@@ -49,19 +49,20 @@ impl Rect {
   }
 }
 
-pub type Scalar = [f64, ..4];
+pub type Scalar = [f64;4];
 
 pub struct Seq {
   pub raw: *mut CvSeq,
   pub curr: uint,
 }
 
-impl Iterator<Rect> for Seq {
+impl Iterator for Seq {
+  type Item = Rect;
   fn next(&mut self) -> Option<Rect> {
     unsafe {
       if self.curr.lt(&self.len()) {
         match cvGetSeqElem(&*self.raw, self.curr as int) {
-          c if c.is_not_null() => {
+          c if !c.is_null() => {
             let ref rect = *(c as *mut CvRect);
             self.curr += 1;
             Some(Rect::new(rect.x as int, rect.y as int, rect.width as int, rect.height as int))
@@ -84,7 +85,7 @@ impl Seq {
   }
 }
 
-#[deriving(Clone, PartialEq, Show)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Size {
   pub width: int,
   pub height: int,

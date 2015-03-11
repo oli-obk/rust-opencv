@@ -5,6 +5,10 @@ use ffi::imgproc::*;
 use ffi::types::{CvArr, CvPoint, CvRect, CvSize, IplImage};
 use core::{Color, Point, Rect, Size};
 
+use std::path::Path;
+use std::ffi::AsOsStr;
+use std::os::unix::prelude::OsStrExt;
+
 pub struct Image {
   pub raw: *const IplImage,
   pub is_owned: bool,
@@ -12,18 +16,20 @@ pub struct Image {
 
 impl Image {
   pub fn load(path: &Path) -> Result<Image, String> {
-    path.with_c_str(|path_c_str| unsafe {
-      match cvLoadImage(path_c_str, 1) { // CV_LOAD_IMAGE_COLOR
-        p if p.is_not_null() => Ok(Image { raw: p, is_owned: true }),
-        _ => Err(path_c_str.to_string()),
+    let path_c_str = path.as_os_str().to_cstring().unwrap();
+    unsafe {
+      match cvLoadImage(path_c_str.as_ptr(), 1) { // CV_LOAD_IMAGE_COLOR
+        p if !p.is_null() => Ok(Image { raw: p, is_owned: true }),
+        _ => Err(String::from_utf8_lossy(path_c_str.to_bytes()).into_owned()),
       }
-    })
+    }
   }
 
   pub fn save(&self, path: &Path) -> bool {
-    path.with_c_str(|path| unsafe {
-      cvSaveImage(path, self.raw, ptr::null()) == 0
-    })
+    let path_c_str = path.as_os_str().to_cstring().unwrap();
+    unsafe {
+      cvSaveImage(path_c_str.as_ptr(), self.raw, ptr::null()) == 0
+    }
   }
 
   pub fn size(&self) -> Size {

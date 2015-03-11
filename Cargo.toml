@@ -2,6 +2,8 @@
 name = "opencv"
 version = "0.0.1"
 authors = [ "woxtu <woxtup@gmail.com>" ]
+description = "Wrapper for OpenCV"
+license = "MIT"
 
 [features]
 default = ["opencv24"]

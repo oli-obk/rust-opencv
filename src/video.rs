@@ -4,6 +4,10 @@ use ffi::types::{CvCapture, CvSize, CvVideoWriter};
 use core::Size;
 use image::Image;
 
+use std::path::Path;
+use std::ffi::AsOsStr;
+use std::os::unix::prelude::OsStrExt;
+
 pub struct Frames<'a> {
   capture: &'a Capture,
 }
@@ -13,7 +17,7 @@ impl<'a> Frames<'a> {
     unsafe {
       cvSetCaptureProperty(self.capture.raw, CV_CAP_PROP_POS_FRAMES, index as f64);
       match cvQueryFrame(self.capture.raw) {
-        p if p.is_not_null() => Some(Image { raw: p, is_owned: false }),
+        p if !p.is_null() => Some(Image { raw: p, is_owned: false }),
         _ => None,
       }
     }
@@ -24,7 +28,8 @@ impl<'a> Frames<'a> {
   }
 }
 
-impl<'a> Iterator<Image> for Frames<'a> {
+impl<'a> Iterator for Frames<'a> {
+  type Item = Image;
   fn next(&mut self) -> Option<Image> {
     let index = unsafe { cvGetCaptureProperty(self.capture.raw, CV_CAP_PROP_POS_FRAMES) as uint };
     self.at(index + 1)
@@ -37,18 +42,19 @@ pub struct Capture {
 
 impl Capture {
   pub fn from_file(path: &Path) -> Result<Capture, String> {
-    path.with_c_str(|path_c_str| unsafe {
-      match cvCreateFileCapture(path_c_str) {
-        p if p.is_not_null() => Ok(Capture { raw: p }),
-        _ => Err(path_c_str.to_string()),
+    let path_c_str = path.as_os_str().to_cstring().unwrap();
+    unsafe {
+      match cvCreateFileCapture(path_c_str.as_ptr()) {
+        p if !p.is_null() => Ok(Capture { raw: p }),
+        _ => Err(String::from_utf8_lossy(path_c_str.to_bytes()).into_owned()),
       }
-    })
+    }
   }
 
   pub fn from_camera(index: int) -> Result<Capture, String> {
     unsafe {
       match cvCreateCameraCapture(index as i32) {
-        c if c.is_not_null() => {
+        c if !c.is_null() => {
           Ok(Capture {raw: c})
         },
         _ => {
@@ -79,17 +85,18 @@ pub struct Writer {
 }
 
 impl Writer {
-  pub fn open(path: &Path, fourcc: &[char, ..4], fps: f64, frame: &Size, is_color: bool) -> Result<Writer, String> {
+  pub fn open(path: &Path, fourcc: &[char;4], fps: f64, frame: &Size, is_color: bool) -> Result<Writer, String> {
     let fourcc = unsafe { mem::transmute::<_, i32>([fourcc[0] as u8, fourcc[1] as u8, fourcc[2] as u8, fourcc[3] as u8]) };
     let is_color = if is_color { 1i } else { 0i };
 
-    path.with_c_str(|path| unsafe {
+    let path_c_str = path.as_os_str().to_cstring().unwrap();
+    unsafe {
       let frame_size = CvSize { width: frame.width as i32, height: frame.height as i32 };
-      match cvCreateVideoWriter(path, fourcc, fps as f64, frame_size, is_color as i32) {
-        p if p.is_not_null() => Ok(Writer { raw: p }),
-        _ => Err(path.to_string()),
+      match cvCreateVideoWriter(path_c_str.as_ptr(), fourcc, fps as f64, frame_size, is_color as i32) {
+        p if !p.is_null() => Ok(Writer { raw: p }),
+        _ => Err(String::from_utf8_lossy(path_c_str.to_bytes()).into_owned()),
       }
-    })
+    }
   }
 
   pub fn write(&self, image: &Image) -> bool {

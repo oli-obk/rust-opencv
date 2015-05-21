@@ -1,19 +1,17 @@
 use std::mem;
 use ffi::videoio::*;
 use ffi::types::{CvCapture, CvSize, CvVideoWriter};
-use core::Size;
+use core::{Size, as_c_str};
 use image::Image;
 
 use std::path::Path;
-use std::ffi::AsOsStr;
-use std::os::unix::prelude::OsStrExt;
 
 pub struct Frames<'a> {
   capture: &'a Capture,
 }
 
 impl<'a> Frames<'a> {
-  pub fn at(&self, index: uint) -> Option<Image> {
+  pub fn at(&self, index: u32) -> Option<Image> {
     unsafe {
       cvSetCaptureProperty(self.capture.raw, CV_CAP_PROP_POS_FRAMES, index as f64);
       match cvQueryFrame(self.capture.raw) {
@@ -23,15 +21,15 @@ impl<'a> Frames<'a> {
     }
   }
 
-  pub fn count(&self) -> uint {
-    unsafe { cvGetCaptureProperty(self.capture.raw, CV_CAP_PROP_FRAME_COUNT) as uint - 2 } // ??
+  pub fn count(&self) -> u32 {
+    unsafe { cvGetCaptureProperty(self.capture.raw, CV_CAP_PROP_FRAME_COUNT) as u32 - 2 } // ??
   }
 }
 
 impl<'a> Iterator for Frames<'a> {
   type Item = Image;
   fn next(&mut self) -> Option<Image> {
-    let index = unsafe { cvGetCaptureProperty(self.capture.raw, CV_CAP_PROP_POS_FRAMES) as uint };
+    let index = unsafe { cvGetCaptureProperty(self.capture.raw, CV_CAP_PROP_POS_FRAMES) as u32 };
     self.at(index + 1)
   }
 }
@@ -42,7 +40,7 @@ pub struct Capture {
 
 impl Capture {
   pub fn from_file(path: &Path) -> Result<Capture, String> {
-    let path_c_str = path.as_os_str().to_cstring().unwrap();
+    let path_c_str = as_c_str(path);
     unsafe {
       match cvCreateFileCapture(path_c_str.as_ptr()) {
         p if !p.is_null() => Ok(Capture { raw: p }),
@@ -51,7 +49,7 @@ impl Capture {
     }
   }
 
-  pub fn from_camera(index: int) -> Result<Capture, String> {
+  pub fn from_camera(index: i32) -> Result<Capture, String> {
     unsafe {
       match cvCreateCameraCapture(index as i32) {
         c if !c.is_null() => {
@@ -87,9 +85,9 @@ pub struct Writer {
 impl Writer {
   pub fn open(path: &Path, fourcc: &[char;4], fps: f64, frame: &Size, is_color: bool) -> Result<Writer, String> {
     let fourcc = unsafe { mem::transmute::<_, i32>([fourcc[0] as u8, fourcc[1] as u8, fourcc[2] as u8, fourcc[3] as u8]) };
-    let is_color = if is_color { 1i } else { 0i };
+    let is_color = if is_color { 1 } else { 0 };
 
-    let path_c_str = path.as_os_str().to_cstring().unwrap();
+    let path_c_str = as_c_str(path);
     unsafe {
       let frame_size = CvSize { width: frame.width as i32, height: frame.height as i32 };
       match cvCreateVideoWriter(path_c_str.as_ptr(), fourcc, fps as f64, frame_size, is_color as i32) {

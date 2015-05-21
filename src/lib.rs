@@ -1,9 +1,10 @@
 #![crate_name = "opencv"]
 #![crate_type = "lib"]
 
-
-#![feature(globs, unsafe_destructor)]
 #![deny(unused_imports)]
+
+#[macro_use] extern crate enum_primitive;
+extern crate num;
 
 extern crate libc;
 

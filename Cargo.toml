@@ -13,3 +13,8 @@ opencv30 = []
 [lib]
 name = "opencv"
 path = "src/lib.rs"
+
+[dependencies]
+enum_primitive = "*"
+num = "*"
+libc = "*"
